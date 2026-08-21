@@ -18,9 +18,17 @@ This stack is designed to be fully self-contained and secure:
 
 ## Cloudflare Tunnel Configuration
 
-In your Cloudflare Zero Trust Dashboard, set up your public hostname (e.g., `bitnet.alamiaai.com`) to route traffic to the container via your server's localhost:
+In your Cloudflare Zero Trust Dashboard, set up your public hostname (e.g., `ai.alamiaconnect.com`) to route traffic to the container via your server's localhost:
 - **Service Type:** `HTTP`
 - **URL:** `localhost:11434`
+
+### Production Hardening & Security
+
+Because this API is publicly facing, the stack includes multiple hardening constraints:
+- **API Authentication:** You must set `BITNET_API_KEY` in your Portainer environment variables. All programmatic requests must include this header:
+  `Authorization: Bearer <your-api-key>`
+- **Cloudflare WAF:** It is highly recommended to create a **Rate Limiting Rule** in your Cloudflare dashboard for `ai.alamiaconnect.com` (e.g., Block if > 30 requests per minute) to prevent Denial of Wallet attacks.
+- **Resource Limits:** Docker is configured to cap the CPU to 3 cores and RAM to 3GB to protect your VPS.
 
 ## Important Note on ARM64 VPS
 

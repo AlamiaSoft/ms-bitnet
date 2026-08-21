@@ -64,7 +64,7 @@ jobs:
             -DGGML_FATAL_WARNINGS=OFF `
             -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF `
             -DCMAKE_C_FLAGS="-w" `
-            -DCMAKE_CXX_FLAGS="-w" `
+            -DCMAKE_CXX_FLAGS="/EHsc -w" `
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Release Binaries

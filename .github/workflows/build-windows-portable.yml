@@ -45,13 +45,13 @@ jobs:
       - name: Set up MSVC Dev Environment
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Configure CMake (Visual Studio 2022 + ClangCL)
+      - name: Configure CMake (Ninja + clang-cl)
         working-directory: upstream-bitnet
         run: |
           cmake -B build `
-            -G "Visual Studio 17 2022" `
-            -A x64 `
-            -T ClangCL `
+            -G Ninja `
+            -DCMAKE_C_COMPILER=clang-cl `
+            -DCMAKE_CXX_COMPILER=clang-cl `
             -DBITNET_X86_TL2=OFF `
             -DLLAMA_BUILD_TOOLS=ON `
             -DLLAMA_BUILD_EXAMPLES=ON `
@@ -72,11 +72,8 @@ jobs:
           New-Item -ItemType Directory -Path "$distDir/models" -Force | Out-Null
           New-Item -ItemType File -Path "$distDir/models/.gitkeep" -Force | Out-Null
 
-          # Copy binaries and runtime libraries
-          Copy-Item "upstream-bitnet/build/bin/Release/*.exe" -Destination "$distDir/bin/" -Force
-          if (Test-Path "upstream-bitnet/build/bin/Release/*.dll") {
-              Copy-Item "upstream-bitnet/build/bin/Release/*.dll" -Destination "$distDir/bin/" -Force
-          }
+          # Copy binaries and runtime libraries from build output
+          Get-ChildItem -Path "upstream-bitnet/build/bin" -Recurse -Include *.exe, *.dll | Copy-Item -Destination "$distDir/bin/" -Force
 
           # Copy launcher scripts & documentation
           Copy-Item "portable/start.bat" -Destination "$distDir/" -Force

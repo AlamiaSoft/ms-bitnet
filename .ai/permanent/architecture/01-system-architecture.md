@@ -5,28 +5,22 @@
 This project is a technical spike / Proof of Concept (PoC) to containerize Microsoft's BitNet (1.58-bit LLM runtime) in a Linux Docker container running on Windows Docker Desktop. The service exposes a local HTTP inference server (OpenAI-compatible API) accessible by host applications, automated tests, and future AI gateway runtimes.
 
 ```
-+-------------------------------------------------------------+
-| Windows Host (WSL2 / Docker Desktop)                       |
-|                                                             |
-|   +-----------------------------------------------------+   |
-|   | Linux BitNet Container (Ubuntu 22.04 / 24.04)       |   |
-|   |                                                     |   |
-|   |  +--------------------+    +---------------------+  |   |
-|   |  | BitNet C++ Kernels |<---| bitnet.cpp runtime  |  |   |
-|   |  +--------------------+    +----------+----------+  |   |
-|   |                                       |             |   |
-|   |                            +----------v----------+  |   |
-|   |                            |    llama-server     |  |   |
-|   |                            |   (0.0.0.0:8080)    |  |   |
-|   |                            +----------+----------+  |   |
-|   |                                       |             |   |
-|   +---------------------------------------|-------------+   |
-|                                           |                 |
-|   Port 8080:8080                          v                 |
-|   http://localhost:8080/v1 <--- Host App / Smoke Test       |
-|                                                             |
-|   (Isolated from Host Ollama @ localhost:11434)             |
-+-------------------------------------------------------------+
+                               Microsoft BitNet Provider
+                                          │
+                       ┌──────────────────┴──────────────────┐
+                       ▼                                     ▼
+               Tier 1: Docker                         Tier 2: Windows Portable
+            (PCs / Workstations)                       (Low-End Laptops)
+                       │                                     │
+               Microsoft MCR Image                       Standalone ZIP
+           (AVX2 / AVX512 Auto-detect)                (Built in GitHub Actions)
+                       │                                     │
+             `docker compose up -d`                       `start.bat`
+                       │                                     │
+                       └──────────────────┬──────────────────┘
+                                          │
+                          OpenAI API: http://localhost:8080/v1
+                          Web UI:     http://localhost:8080/
 ```
 
 ---
@@ -34,19 +28,15 @@ This project is a technical spike / Proof of Concept (PoC) to containerize Micro
 ## 2. Invariants & Guarantees
 
 1. **Host & Ollama Isolation**:
-   - The BitNet container operates on port 8080 (configurable via `BITNET_HOST_PORT`).
-   - Host Ollama (`http://localhost:11434`) must never be touched, modified, or depended upon.
-2. **CPU-First Architecture**:
-   - Primary target is x86_64 AVX2/AVX-512 CPU execution via BitNet's `i2_s` / `tl2` kernels.
-   - GPU / CUDA passthrough is intentionally out-of-scope for the initial PoC to guarantee broad portability without driver dependencies.
-3. **Model Persistence**:
-   - Models reside on the host in `./models` and are bind-mounted to `/models` inside the container.
-   - Container destruction (`docker compose down`) must NOT delete downloaded models.
+   - The BitNet server operates on host port 8080 (configurable via `BITNET_HOST_PORT`).
+   - Host Ollama (`http://localhost:11434`) is never touched, modified, or conflicted with.
+2. **Zero Local Compilation**:
+   - Tier 1 consumes Microsoft's official prebuilt OCI image directly from MCR (`mcr.microsoft.com/appsvc/docs/sidecars/sample-experiment:bitnet-b1.58-2b-4t-gguf`).
+   - Tier 2 provides standalone native Windows binaries built in GitHub Actions CI (`.github/workflows/build-windows-portable.yml`).
+3. **CPU-First Architecture**:
+   - Primary target is x86_64 AVX2/AVX-512 CPU execution via BitNet's `i2_s` / `tl2` kernels with ~230 MB RAM footprint.
 4. **Standard Protocol**:
-   - The container exposes an HTTP server providing OpenAI-compatible endpoints (`/v1/models`, `/v1/chat/completions`, `/v1/completions`) and a health check (`/health` or `/v1/models`).
-   - No proprietary or custom protocol wrapper is introduced.
-5. **Portability**:
-   - The Dockerfile and Docker Compose configurations must run cleanly on both Windows (via Docker Desktop / WSL2) and standard Linux VPS environments without image modification.
+   - Exposes standard OpenAI-compatible endpoints (`/v1/models`, `/v1/chat/completions`) and built-in chat UI (`/?new_chat=true#/`).
 
 ---
 
@@ -54,10 +44,9 @@ This project is a technical spike / Proof of Concept (PoC) to containerize Micro
 
 | Decision | Alternative Considered | Rationale |
 | :--- | :--- | :--- |
-| **Native `llama-server`** | Custom Python FastAPI / Flask wrapper | `llama-server` built into `bitnet.cpp` (from llama.cpp submodule) natively provides high-performance C++ HTTP serving, streaming, continuous batching, and OpenAI API compatibility with zero Python runtime overhead during inference. |
-| **CPU-First execution** | NVIDIA CUDA runtime | GPU passthrough in Docker on Windows requires NVIDIA Container Toolkit configuration and specific driver versions. CPU-first satisfies the core PoC goal of proving 1-bit inference on commodity hardware. |
-| **Bind Mount for `./models`** | Docker Named Volumes / Baked-in Image | Baking models into images creates multi-gigabyte image sizes and prevents model swapping without rebuilding. Named volumes make manual model downloads less transparent on Windows. Bind mounts allow direct PowerShell downloading and verification. |
-| **Multi-stage Docker Build** | Single-stage Build with Toolchain | Building BitNet requires Clang 18+, CMake 3.22+, and development packages. Multi-stage build isolates build tools to the builder layer and packages only necessary runtime binaries and shared libraries into the runtime image. |
+| **Official MCR Prebuilt Image** | Local Dockerfile source build | Using `mcr.microsoft.com/appsvc/docs/sidecars/sample-experiment:bitnet-b1.58-2b-4t-gguf` eliminates 500+ MB of source code, multi-gigabyte build tools, and reduces startup time to seconds with zero local compilation. |
+| **CI-Built Windows Portable ZIP** | Requiring Visual Studio / CMake on laptops | Compiling native `.exe` files in GitHub Actions CI allows low-end Windows laptops without Docker or compilers to run BitNet via a single `start.bat` script. |
+| **Native `llama-server`** | Python FastAPI / Flask wrapper | `llama-server` natively provides high-performance C++ HTTP serving, streaming, continuous batching, and web UI with zero Python runtime overhead. |
 
 ---
 

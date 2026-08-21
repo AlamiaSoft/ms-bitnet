@@ -11,3 +11,5 @@ bitnet-repo/*.log
 bitnet-repo/**/__pycache__/
 *.zip
 portable/bitnet-windows-*/
+bitnet-portable/
+portable/

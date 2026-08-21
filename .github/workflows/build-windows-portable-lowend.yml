@@ -1,0 +1,112 @@
+name: Build Windows Portable Release (Low-End)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: false
+        default: 'latest'
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    name: Build BitNet Windows x64 Portable (Low-End)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Clone Upstream Microsoft BitNet
+        run: |
+          git clone --depth 1 https://github.com/microsoft/BitNet.git upstream-bitnet
+          cd upstream-bitnet
+          git submodule update --init --recursive 3rdparty/llama.cpp
+
+      - name: Install Python Dependencies
+        working-directory: upstream-bitnet
+        run: |
+          pip install -r requirements.txt
+          pip install 3rdparty/llama.cpp/gguf-py
+
+      - name: Run BitNet Codegen
+        working-directory: upstream-bitnet
+        run: |
+          python utils/codegen_tl2.py --model bitnet_b1_58-3B --BM 160,320,320 --BK 96,96,96 --bm 32,32,32
+
+      - name: Set up MSVC Dev Environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure CMake (Ninja + clang-cl)
+        working-directory: upstream-bitnet
+        run: |
+          cmake -B build `
+            -G Ninja `
+            -DCMAKE_C_COMPILER=clang-cl `
+            -DCMAKE_CXX_COMPILER=clang-cl `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DLLAMA_STATIC=ON `
+            -DBITNET_X86_TL2=OFF `
+            -DLLAMA_BUILD_TOOLS=ON `
+            -DLLAMA_BUILD_EXAMPLES=ON `
+            -DLLAMA_BUILD_COMMON=ON `
+            -DLLAMA_BUILD_SERVER=ON `
+            -DLLAMA_BUILD_UI=ON `
+            -DLLAMA_FATAL_WARNINGS=OFF `
+            -DGGML_FATAL_WARNINGS=OFF `
+            -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF `
+            -DCMAKE_C_FLAGS="-w" `
+            -DCMAKE_CXX_FLAGS="/EHsc -w" `
+            -DLLAMA_AVX2=OFF `
+            -DLLAMA_FMA=OFF `
+            -DLLAMA_F16C=OFF `
+            -DLLAMA_AVX512=OFF `
+            -DLLAMA_AVX512_VBMI=OFF `
+            -DLLAMA_AVX512_VNNI=OFF `
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Release Binaries
+        working-directory: upstream-bitnet
+        run: |
+          cmake --build build --config Release -j4
+
+      - name: Assemble Portable Package
+        run: |
+          $distDir = "dist/bitnet-windows-x64-lowend"
+          New-Item -ItemType Directory -Path "$distDir/bin" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$distDir/models" -Force | Out-Null
+          New-Item -ItemType File -Path "$distDir/models/.gitkeep" -Force | Out-Null
+
+          # Copy binaries and runtime libraries from build output
+          Get-ChildItem -Path "upstream-bitnet/build/bin" -Recurse -Include *.exe, *.dll | Copy-Item -Destination "$distDir/bin/" -Force
+
+          # Copy launcher scripts & documentation
+          Copy-Item "portable/start.bat" -Destination "$distDir/" -Force
+          Copy-Item "portable/start.ps1" -Destination "$distDir/" -Force
+          Copy-Item "portable/README.md" -Destination "$distDir/" -Force
+
+          # Create ZIP archive
+          Compress-Archive -Path "$distDir/*" -DestinationPath "dist/bitnet-windows-x64-lowend.zip" -Force
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitnet-windows-x64-lowend
+          path: dist/bitnet-windows-x64-lowend.zip
+          retention-days: 30
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/bitnet-windows-x64-lowend.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

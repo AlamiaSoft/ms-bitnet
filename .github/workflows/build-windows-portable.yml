@@ -52,6 +52,8 @@ jobs:
             -G Ninja `
             -DCMAKE_C_COMPILER=clang-cl `
             -DCMAKE_CXX_COMPILER=clang-cl `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DLLAMA_STATIC=ON `
             -DBITNET_X86_TL2=OFF `
             -DLLAMA_BUILD_TOOLS=ON `
             -DLLAMA_BUILD_EXAMPLES=ON `

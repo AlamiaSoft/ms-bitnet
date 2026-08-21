@@ -42,11 +42,15 @@ jobs:
         run: |
           python utils/codegen_tl2.py --model bitnet_b1_58-3B --BM 160,320,320 --BK 96,96,96 --bm 32,32,32
 
+      - name: Set up MSVC Dev Environment
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Configure CMake (Visual Studio 2022 + ClangCL)
         working-directory: upstream-bitnet
         run: |
           cmake -B build `
             -G "Visual Studio 17 2022" `
+            -A x64 `
             -T ClangCL `
             -DBITNET_X86_TL2=OFF `
             -DLLAMA_BUILD_TOOLS=ON `

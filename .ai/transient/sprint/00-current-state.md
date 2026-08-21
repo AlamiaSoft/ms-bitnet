@@ -26,3 +26,5 @@ Establishing a local, containerized proof-of-concept for Microsoft BitNet 1.58-b
 - [x] Complete isolation from host Ollama runtime (:11434) verified.
 - [x] Implemented Windows Portable distribution architecture (04.md / 04a.md) with portable launcher scripts (`portable/start.bat`, `portable/start.ps1`).
 - [x] Added GitHub Actions CI workflow (`.github/workflows/build-windows-portable.yml`) to compile and package standalone `bitnet-windows-x64.zip` with zero local build requirements on user laptops.
+- [x] Deployed Tier 3 Production Architecture to AMD VPS via Portainer.
+- [x] Implemented API security hardening (API Keys, Context Bounding, Docker Resource Limits, Log Rotation, Localhost Binding).

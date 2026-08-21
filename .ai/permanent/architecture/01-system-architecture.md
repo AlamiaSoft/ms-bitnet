@@ -4,23 +4,25 @@
 
 This project is a technical spike / Proof of Concept (PoC) to containerize Microsoft's BitNet (1.58-bit LLM runtime) in a Linux Docker container running on Windows Docker Desktop. The service exposes a local HTTP inference server (OpenAI-compatible API) accessible by host applications, automated tests, and future AI gateway runtimes.
 
-```
+```text
                                Microsoft BitNet Provider
                                           │
-                       ┌──────────────────┴──────────────────┐
-                       ▼                                     ▼
-               Tier 1: Docker                         Tier 2: Windows Portable
-            (PCs / Workstations)                       (Low-End Laptops)
-                       │                                     │
-               Microsoft MCR Image                       Standalone ZIP
-           (AVX2 / AVX512 Auto-detect)                (Built in GitHub Actions)
-                       │                                     │
-             `docker compose up -d`                       `start.bat`
-                       │                                     │
-                       └──────────────────┬──────────────────┘
+             ┌────────────────────────────┼────────────────────────────┐
+             ▼                            ▼                            ▼
+     Tier 1: Docker            Tier 2: Windows Portable        Tier 3: Public VPS
+  (PCs / Workstations)            (Low-End Laptops)         (Production / Portainer)
+             │                            │                            │
+     Microsoft MCR Image           Standalone ZIP             Microsoft MCR Image
+ (AVX2 / AVX512 Auto-detect)  (Built in GitHub Actions)        (Hardened Stack)
+             │                            │                            │
+   `docker compose up -d`            `start.bat`            `Cloudflare Zero Trust`
+             │                            │                            │
+             └────────────────────────────┼────────────────────────────┘
                                           │
-                          OpenAI API: http://localhost:8080/v1
-                          Web UI:     http://localhost:8080/
+                         OpenAI API: http://localhost:8080/v1
+                         Web UI:     http://localhost:8080/
+                                          │
+                        (Tier 3 runs on localhost:11434 via Tunnel)
 ```
 
 ---
@@ -33,6 +35,9 @@ This project is a technical spike / Proof of Concept (PoC) to containerize Micro
 2. **Zero Local Compilation**:
    - Tier 1 consumes Microsoft's official prebuilt OCI image directly from MCR (`mcr.microsoft.com/appsvc/docs/sidecars/sample-experiment:bitnet-b1.58-2b-4t-gguf`).
    - Tier 2 provides standalone native Windows binaries built in GitHub Actions CI (`.github/workflows/build-windows-portable.yml`).
+3. **Tier 3 (Production) Hardening**:
+   - Exposed solely through `127.0.0.1:11434` for Cloudflare Tunnel ingress, blocking all public internet exposure.
+   - Enforces API Key Authentication (`Authorization: Bearer`), Docker resource constraints (Memory/CPU limits), container health checks, log rotation, and context window limits (`--ctx-size`).
 3. **CPU-First Architecture**:
    - Primary target is x86_64 AVX2/AVX-512 CPU execution via BitNet's `i2_s` / `tl2` kernels with ~230 MB RAM footprint.
 4. **Standard Protocol**:

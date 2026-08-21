@@ -9,3 +9,5 @@ bitnet-repo/build/
 bitnet-repo/models/
 bitnet-repo/*.log
 bitnet-repo/**/__pycache__/
+*.zip
+portable/bitnet-windows-*/

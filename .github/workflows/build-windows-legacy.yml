@@ -59,7 +59,7 @@ jobs:
             -DLLAMA_BUILD_EXAMPLES=ON `
             -DLLAMA_BUILD_COMMON=ON `
             -DLLAMA_BUILD_SERVER=ON `
-            -DLLAMA_BUILD_UI=ON `
+            -DGGML_CPU_ALL_VARIANTS=OFF `
             -DGGML_AVX512=OFF `
             -DGGML_AVX512_VBMI=OFF `
             -DGGML_AVX512_VNNI=OFF `

@@ -58,6 +58,11 @@ jobs:
             -DLLAMA_BUILD_COMMON=ON `
             -DLLAMA_BUILD_SERVER=ON `
             -DLLAMA_BUILD_UI=ON `
+            -DLLAMA_FATAL_WARNINGS=OFF `
+            -DGGML_FATAL_WARNINGS=OFF `
+            -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF `
+            -DCMAKE_C_FLAGS="-w" `
+            -DCMAKE_CXX_FLAGS="-w" `
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Release Binaries

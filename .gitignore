@@ -1,0 +1,11 @@
+.env
+models/*
+!models/.gitkeep
+*.log
+__pycache__/
+.vscode/
+.idea/
+bitnet-repo/build/
+bitnet-repo/models/
+bitnet-repo/*.log
+bitnet-repo/**/__pycache__/

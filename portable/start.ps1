@@ -20,20 +20,15 @@ if (-not (Test-Path $exePath)) {
     exit 1
 }
 
-# 2. Check model file
+# 2. Check and auto-download model file if missing
 if (-not (Test-Path $modelPath)) {
-    Write-Host "[WARNING] Model weights not found at $modelPath" -ForegroundColor Yellow
-    $download = Read-Host "Would you like to download 'ggml-model-i2_s.gguf' (~1.2 GB) from Hugging Face now? (Y/N)"
-    if ($download -match "^[Yy]") {
-        if (-not (Test-Path "models")) { New-Item -ItemType Directory -Path "models" | Out-Null }
-        $url = "https://huggingface.co/microsoft/BitNet-b1.58-2B-4T-gguf/resolve/main/ggml-model-i2_s.gguf"
-        Write-Host "Downloading from $url ..." -ForegroundColor Cyan
-        Start-BitsTransfer -Source $url -Destination $modelPath -DisplayName "BitNet Model Download"
-        Write-Host "[OK] Download completed." -ForegroundColor Green
-    } else {
-        Write-Host "Please place your GGUF model in '$modelPath' and rerun this script." -ForegroundColor Red
-        exit 1
-    }
+    Write-Host "[INFO] Model weights not found at $modelPath" -ForegroundColor Yellow
+    if (-not (Test-Path "models")) { New-Item -ItemType Directory -Path "models" | Out-Null }
+    $url = "https://huggingface.co/microsoft/BitNet-b1.58-2B-4T-gguf/resolve/main/ggml-model-i2_s.gguf"
+    Write-Host "Automatically downloading 'ggml-model-i2_s.gguf' (~1.2 GB) from Hugging Face..." -ForegroundColor Cyan
+    Write-Host "URL: $url" -ForegroundColor Gray
+    Start-BitsTransfer -Source $url -Destination $modelPath -DisplayName "BitNet Model Download"
+    Write-Host "[OK] Download completed successfully!" -ForegroundColor Green
 }
 
 Write-Host "Starting llama-server on http://localhost:$port (Threads: $threads) ..." -ForegroundColor Green
